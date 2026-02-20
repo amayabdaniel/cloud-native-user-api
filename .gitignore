@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+.terragrunt-cache/
+*.tfplan
+.ipynb_checkpoints/
