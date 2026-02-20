@@ -1,0 +1,15 @@
+{{ .Chart.Name }} has been deployed.
+
+{{- if .Values.gateway.enabled }}
+
+Gateway API is enabled. To get the ALB DNS name:
+
+  kubectl get gateway {{ include "fastapi-app.fullname" . }} -n {{ .Release.Namespace }} -o jsonpath='{.status.addresses[0].value}'
+
+Once the ALB is provisioned, access the API at:
+
+  http://<ALB_DNS>/
+  http://<ALB_DNS>/docs
+  http://<ALB_DNS>/users
+
+{{- end }}
