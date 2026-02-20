@@ -1,0 +1,45 @@
+replicaCount: 1
+
+image:
+  repository: ""  # Set to ECR repo URL
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+companyName: "Acme Corp"
+
+secretName: "app-credentials"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+gateway:
+  enabled: true
+  className: "aws-alb"
+  scheme: "internet-facing"
+
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+schemaJob:
+  enabled: true
+  image: postgres:17-alpine

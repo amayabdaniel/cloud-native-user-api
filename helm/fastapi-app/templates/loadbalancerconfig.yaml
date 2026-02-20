@@ -1,0 +1,11 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: {{ include "fastapi-app.fullname" . }}-lbconfig
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fastapi-app.labels" . | nindent 4 }}
+spec:
+  scheme: {{ .Values.gateway.scheme }}
+{{- end }}

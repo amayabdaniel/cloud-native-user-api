@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fastapi-app
+description: FastAPI User API with PostgreSQL and Redis caching
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
