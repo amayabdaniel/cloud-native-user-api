@@ -17,7 +17,7 @@ dependency "vpc" {
 
 inputs = {
   cluster_name       = "cloud-native-user-api-test"
-  cluster_version    = "1.32"
+  cluster_version    = "1.35"
   vpc_id             = dependency.vpc.outputs.vpc_id
   private_subnet_ids = dependency.vpc.outputs.private_subnets
   node_instance_type = "t3.small"

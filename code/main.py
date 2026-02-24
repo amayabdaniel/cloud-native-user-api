@@ -2,15 +2,18 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import asyncpg
 import redis.asyncio as redis
+import httpx
 import json
 import os
 import asyncio
 
 COMPANY_NAME = os.getenv("COMPANY_NAME", "My Company")
+VLLM_URL = os.getenv("VLLM_URL", "http://localhost:8001")
+VLLM_MODEL = os.getenv("VLLM_MODEL", "HuggingFaceTB/SmolLM2-135M-Instruct")
 
 app = FastAPI(
     title=f"{COMPANY_NAME} API",
-    description=f"API for {COMPANY_NAME}",
+    description="AI-powered question-answering service with user management",
     version="1.0.0",
 )
 
@@ -25,6 +28,16 @@ CACHE_TTL = 60  # seconds
 class UserCreate(BaseModel):
     name: str
     email: str
+
+
+class QuestionRequest(BaseModel):
+    question: str
+
+
+class AnswerResponse(BaseModel):
+    question: str
+    answer: str
+    model: str
 
 
 # Startup/Shutdown
@@ -84,6 +97,40 @@ async def readyz():
     except Exception:
         raise HTTPException(status_code=503, detail="Redis not ready")
     return {"status": "ready"}
+
+
+# AI Question-Answering endpoint
+@app.post("/question", response_model=AnswerResponse)
+async def ask_question(request: QuestionRequest):
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{VLLM_URL}/v1/chat/completions",
+                json={
+                    "model": VLLM_MODEL,
+                    "messages": [{"role": "user", "content": request.question}],
+                    "max_tokens": 512,
+                    "temperature": 0.7,
+                },
+            )
+            response.raise_for_status()
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="LLM service timeout")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(
+            status_code=502, detail=f"LLM service error: {e.response.status_code}"
+        )
+
+    data = response.json()
+    answer = data["choices"][0]["message"]["content"]
+
+    return AnswerResponse(
+        question=request.question,
+        answer=answer,
+        model=VLLM_MODEL,
+    )
 
 
 # User endpoints

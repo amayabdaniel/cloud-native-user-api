@@ -46,6 +46,10 @@ spec:
           env:
             - name: COMPANY_NAME
               value: {{ .Values.companyName | quote }}
+            - name: VLLM_URL
+              value: {{ .Values.vllm.url | quote }}
+            - name: VLLM_MODEL
+              value: {{ .Values.vllm.model | quote }}
           envFrom:
             - secretRef:
                 name: {{ .Values.secretName }}

@@ -13,9 +13,13 @@ serviceAccount:
   name: ""
   annotations: {}
 
-companyName: "Acme Corp"
+companyName: "My Company"
 
 secretName: "app-credentials"
+
+vllm:
+  url: "http://vllm:8000"
+  model: "HuggingFaceTB/SmolLM2-135M-Instruct"
 
 service:
   type: ClusterIP

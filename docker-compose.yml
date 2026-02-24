@@ -4,13 +4,15 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - COMPANY_NAME=Acme Corp
+      - COMPANY_NAME=My Company
       - POSTGRES_HOST=postgres
       - POSTGRES_DB=db1
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - VLLM_URL=http://vllm:8000
+      - VLLM_MODEL=HuggingFaceTB/SmolLM2-135M-Instruct
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,3 +46,24 @@ services:
       timeout: 5s
       retries: 5
       start_period: 2s
+
+  vllm:
+    image: vllm/vllm-openai:v0.15.1
+    profiles: ["llm"]
+    command:
+      - "--model"
+      - "HuggingFaceTB/SmolLM2-135M-Instruct"
+      - "--max-model-len"
+      - "2048"
+      - "--dtype"
+      - "half"
+      - "--device"
+      - "cpu"
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 120s

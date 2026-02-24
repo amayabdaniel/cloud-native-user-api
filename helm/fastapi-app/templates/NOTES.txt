@@ -10,6 +10,7 @@ Once the ALB is provisioned, access the API at:
 
   http://<ALB_DNS>/
   http://<ALB_DNS>/docs
+  http://<ALB_DNS>/question
   http://<ALB_DNS>/users
 
 {{- end }}

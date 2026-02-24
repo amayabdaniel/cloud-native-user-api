@@ -1,0 +1,42 @@
+replicaCount: 1
+
+image:
+  repository: vllm/vllm-openai
+  tag: "v0.15.1"
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+model:
+  name: "HuggingFaceTB/SmolLM2-135M-Instruct"
+  maxModelLen: 2048
+  dtype: "half"
+  device: ""  # Set to "cpu" for CPU-only nodes
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  requests:
+    cpu: "2"
+    memory: "4Gi"
+  limits:
+    cpu: "4"
+    memory: "8Gi"
+    # nvidia.com/gpu: 1  # Uncomment for GPU nodes
+
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+nodeSelector: {}
+  # accelerator: nvidia-gpu
+
+tolerations: []
+  # - key: "nvidia.com/gpu"
+  #   operator: "Exists"
+  #   effect: "NoSchedule"
