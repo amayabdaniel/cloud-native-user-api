@@ -74,7 +74,16 @@ def require_api_key(authorization: str | None = Header(default=None)) -> None:
     Fail-secure: if API_KEY is unset on the server, refuse (503) rather than
     permitting anonymous access. When set, uses hmac.compare_digest for a
     constant-time comparison — the same lesson from services/mcp/src/auth.py
-    in the research-radar fleet."""
+    in the research-radar fleet.
+
+    ORDERING WARNING: /readyz also returns 503 (Database not ready / Redis
+    not ready). Both paths distinguish "server misconfigured" from "server
+    up but backend down" via HTTP status alone. If a future refactor makes
+    the readiness / DB path run BEFORE this auth dependency on the /users*
+    endpoints, an unauthenticated caller could distinguish "DB down" from
+    "DB up" via the 503 message — a small information leak and a live
+    oracle. Keep auth strictly ahead of any DB/Redis touch on protected
+    routes."""
     if not API_KEY:
         raise HTTPException(
             status_code=503,
