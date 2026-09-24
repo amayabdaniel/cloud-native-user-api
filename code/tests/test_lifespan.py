@@ -18,7 +18,6 @@ from __future__ import annotations
 import importlib
 import os
 import sys
-import unittest.mock as mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -102,9 +101,11 @@ def test_startup_failure_surfaces(monkeypatch):
     survives the on_event → lifespan migration."""
     monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
     m = _import_main({})
-    with pytest.raises(RuntimeError, match="POSTGRES_PASSWORD"):
-        with TestClient(m.app):
-            pass
+    with (
+        pytest.raises(RuntimeError, match="POSTGRES_PASSWORD"),
+        TestClient(m.app),
+    ):
+        pass
 
 
 def test_module_globals_reset_after_shutdown(monkeypatch):

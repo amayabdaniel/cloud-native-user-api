@@ -1,0 +1,9 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+# Keep in sync with the research-radar fleet's config shape. Rely on the
+# ruff default rule set (E, F plus its newer defaults) and disable rules
+# that we've explicitly decided against.

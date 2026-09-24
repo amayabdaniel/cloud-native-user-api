@@ -27,8 +27,9 @@ import asyncio
 import importlib
 import os
 import sys
-import unittest.mock as mock
+from unittest import mock
 
+import pydantic
 import pytest
 from fastapi.testclient import TestClient
 
@@ -75,19 +76,19 @@ def test_startup_refuses_weak_password(monkeypatch, weak):
 
 def test_question_field_rejects_oversize():
     m = _import_main({})
-    with pytest.raises(Exception):
+    with pytest.raises(pydantic.ValidationError):
         m.QuestionRequest(question="x" * (m.MAX_QUESTION_LEN + 1))
 
 
 def test_question_field_rejects_empty():
     m = _import_main({})
-    with pytest.raises(Exception):
+    with pytest.raises(pydantic.ValidationError):
         m.QuestionRequest(question="")
 
 
 def test_user_create_field_rejects_oversize_name():
     m = _import_main({})
-    with pytest.raises(Exception):
+    with pytest.raises(pydantic.ValidationError):
         m.UserCreate(name="x" * (m.MAX_USER_NAME_LEN + 1), email="a@b.co")
 
 
@@ -95,13 +96,13 @@ def test_user_create_field_rejects_oversize_email():
     m = _import_main({})
     # Build an email that exceeds MAX_USER_EMAIL_LEN.
     long_email = ("x" * (m.MAX_USER_EMAIL_LEN + 10)) + "@example.com"
-    with pytest.raises(Exception):
+    with pytest.raises(pydantic.ValidationError):
         m.UserCreate(name="ok", email=long_email)
 
 
 def test_user_create_field_rejects_malformed_email():
     m = _import_main({})
-    with pytest.raises(Exception):
+    with pytest.raises(pydantic.ValidationError):
         m.UserCreate(name="ok", email="not-an-email")
 
 

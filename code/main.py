@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import asyncio
 import hmac
 import json
@@ -56,7 +57,7 @@ async def lifespan(app: FastAPI):
     db_pool = await _wait_for_postgres()
     redis_client = redis.Redis(
         host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", 6379)),
+        port=int(os.getenv("REDIS_PORT", "6379")),
         decode_responses=True,
     )
     try:
@@ -166,11 +167,11 @@ async def readyz():
     try:
         async with db_pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
-    except Exception:
+    except Exception:  # noqa: BLE001 readiness probe: any failure => 503
         raise HTTPException(status_code=503, detail="Database not ready")
     try:
         await redis_client.ping()
-    except Exception:
+    except Exception:  # noqa: BLE001 readiness probe: any failure => 503
         raise HTTPException(status_code=503, detail="Redis not ready")
     return {"status": "ready"}
 
@@ -196,8 +197,9 @@ async def _read_bounded_bytes(response: httpx.Response, cap: int) -> bytes:
 @app.post("/question", response_model=AnswerResponse)
 async def ask_question(request: QuestionRequest):
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            async with client.stream(
+        async with (
+            httpx.AsyncClient(timeout=60.0) as client,
+            client.stream(
                 "POST",
                 f"{VLLM_URL}/v1/chat/completions",
                 json={
@@ -206,9 +208,10 @@ async def ask_question(request: QuestionRequest):
                     "max_tokens": 512,
                     "temperature": 0.7,
                 },
-            ) as response:
-                response.raise_for_status()
-                body = await _read_bounded_bytes(response, MAX_VLLM_RESPONSE_BYTES)
+            ) as response,
+        ):
+            response.raise_for_status()
+            body = await _read_bounded_bytes(response, MAX_VLLM_RESPONSE_BYTES)
     except httpx.ConnectError:
         raise HTTPException(status_code=503, detail="LLM service unavailable")
     except httpx.TimeoutException:
