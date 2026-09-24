@@ -2,6 +2,7 @@ import asyncio
 import hmac
 import json
 import os
+from contextlib import asynccontextmanager
 
 import asyncpg
 import httpx
@@ -36,6 +37,42 @@ MAX_VLLM_RESPONSE_BYTES = 4 * 1024 * 1024  # 4 MB; a 512-token response is ~4 KB
 DEFAULT_USER_PAGE_SIZE = 50
 MAX_USER_PAGE_SIZE = 200
 
+# Database connections — assigned inside the lifespan handler, exposed as
+# module globals so endpoint handlers can reach them (kept intentionally
+# consistent with the pre-migration shape).
+db_pool = None
+redis_client = None
+
+CACHE_TTL = 60  # seconds
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown replacement for the deprecated @app.on_event handlers.
+
+    Same behavior as before: wait for Postgres, open the Redis client, hand
+    control to the app, then close both on exit."""
+    global db_pool, redis_client
+    db_pool = await _wait_for_postgres()
+    redis_client = redis.Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+        decode_responses=True,
+    )
+    try:
+        yield
+    finally:
+        # Close in reverse order of open. Guard each close so a partial
+        # startup (e.g., DB up but Redis constructor raised earlier) still
+        # closes what did open.
+        if db_pool is not None:
+            await db_pool.close()
+            db_pool = None
+        if redis_client is not None:
+            await redis_client.close()
+            redis_client = None
+
+
 app = FastAPI(
     title=f"{COMPANY_NAME} API",
     description="AI-powered question-answering service with user management",
@@ -43,13 +80,8 @@ app = FastAPI(
     docs_url="/docs" if _EXPOSE_DOCS else None,
     redoc_url="/redoc" if _EXPOSE_DOCS else None,
     openapi_url="/openapi.json" if _EXPOSE_DOCS else None,
+    lifespan=lifespan,
 )
-
-# Database connections
-db_pool = None
-redis_client = None
-
-CACHE_TTL = 60  # seconds
 
 
 # Models
@@ -115,23 +147,6 @@ async def _wait_for_postgres(max_attempts=30, delay=1):
             if attempt == max_attempts - 1:
                 raise
             await asyncio.sleep(delay)
-
-
-@app.on_event("startup")
-async def startup():
-    global db_pool, redis_client
-    db_pool = await _wait_for_postgres()
-    redis_client = redis.Redis(
-        host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", 6379)),
-        decode_responses=True,
-    )
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    await db_pool.close()
-    await redis_client.close()
 
 
 # Root endpoint
