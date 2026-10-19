@@ -63,7 +63,7 @@ resource "helm_release" "lb_controller" {
 
   values = [yamlencode({
     clusterName = var.cluster_name
-    region      = data.aws_region.current.id
+    region      = data.aws_region.current.region
     vpcId       = var.vpc_id
     serviceAccount = {
       create = true

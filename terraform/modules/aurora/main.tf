@@ -27,16 +27,16 @@ module "aurora" {
   source  = "terraform-aws-modules/rds-aurora/aws"
   version = "~> 10.0"
 
-  name           = var.name
-  engine         = "aurora-postgresql"
-  engine_version = var.engine_version
+  name            = var.name
+  engine          = "aurora-postgresql"
+  engine_version  = var.engine_version
   master_username = var.master_username
   database_name   = var.database_name
 
   manage_master_user_password = true
 
-  vpc_id               = var.vpc_id
-  db_subnet_group_name = var.db_subnet_group_name
+  vpc_id                 = var.vpc_id
+  db_subnet_group_name   = var.db_subnet_group_name
   create_security_group  = false
   vpc_security_group_ids = [aws_security_group.aurora.id]
 
