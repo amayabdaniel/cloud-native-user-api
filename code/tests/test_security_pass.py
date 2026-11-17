@@ -185,6 +185,60 @@ def test_list_users_rejects_negative_offset():
     assert r.status_code == 422
 
 
+# ---- Vector 4 extension — upstream response cap ------------------------
+#
+# _read_bounded_bytes is the bound on bytes the service accepts FROM vLLM.
+# It is production-load-bearing (a compromised or misconfigured upstream
+# cannot flood the process) and had no test — the cap could be deleted and
+# `pytest code/tests/` stayed green. These three pin it. Red-verify: drop
+# the `if total > cap: raise` guard and test_read_bounded_bytes_rejects_
+# over_cap_response goes RED (ValueError: HTTPException not raised).
+
+
+class _FakeAsyncByteStream:
+    """Minimal async-iterable stand-in for httpx.Response, yielding the
+    chunks it was constructed with. _read_bounded_bytes only touches
+    aiter_bytes(), so this is the complete surface."""
+
+    def __init__(self, chunks: list[bytes]) -> None:
+        self._chunks = chunks
+
+    async def aiter_bytes(self):
+        for c in self._chunks:
+            yield c
+
+
+def test_read_bounded_bytes_returns_body_when_under_cap():
+    m = _import_main({})
+    resp = _FakeAsyncByteStream([b"hello ", b"world"])
+    body = asyncio.run(m._read_bounded_bytes(resp, cap=1024))
+    assert body == b"hello world"
+
+
+def test_read_bounded_bytes_rejects_over_cap_response():
+    from fastapi import HTTPException
+
+    m = _import_main({})
+    # Two 100-byte chunks against a 150-byte cap: the first lands under,
+    # the second trips the bound mid-stream. This is the shape that would
+    # have caught a vLLM flood pre-fix.
+    resp = _FakeAsyncByteStream([b"x" * 100, b"x" * 100])
+    with pytest.raises(HTTPException) as excinfo:
+        asyncio.run(m._read_bounded_bytes(resp, cap=150))
+    assert excinfo.value.status_code == 502
+    assert "150" in excinfo.value.detail
+
+
+def test_read_bounded_bytes_accepts_exact_cap():
+    """Boundary direction: a response exactly at the cap must NOT raise.
+    Pins the predicate at `>` rather than `>=`; a future tightening to
+    `>=` would break well-behaved exact-fit responses."""
+    m = _import_main({})
+    resp = _FakeAsyncByteStream([b"x" * 50, b"x" * 50])
+    body = asyncio.run(m._read_bounded_bytes(resp, cap=100))
+    assert len(body) == 100
+
+
 # ---- Vector 1 fine detail — timing-safe compare ------------------------
 
 def test_require_api_key_uses_constant_time_compare():
