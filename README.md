@@ -88,6 +88,12 @@ cloud-native-user-api/
 ## Local Development
 
 ```bash
+# The API's fail-secure startup check refuses any POSTGRES_PASSWORD in its
+# weak-defaults set: {"", "postgres", "password", "changeme", "change-me",
+# "admin", "root"} (case-insensitive). Compose refuses to render without
+# POSTGRES_PASSWORD set at all, so pick an explicit dev value first.
+export POSTGRES_PASSWORD='dev-insecure-local-only'
+
 # Start the core stack (API + PostgreSQL + Redis)
 docker compose up --build
 

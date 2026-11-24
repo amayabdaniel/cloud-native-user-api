@@ -8,7 +8,13 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_DB=db1
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      # Must match the Python fail-secure rule in code/main.py: the value
+      # cannot be unset or one of _WEAK_PASSWORDS ({"", "postgres",
+      # "password", "changeme", "change-me", "admin", "root"}). Compose
+      # refuses to render without POSTGRES_PASSWORD set, mirroring that
+      # same refusal at the container layer so a dev doesn't hit the
+      # RuntimeError inside the api container to discover it.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD to a non-weak value (see README)}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - VLLM_URL=http://vllm:8000
@@ -23,7 +29,7 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD to a non-weak value (see README)}
       POSTGRES_DB: db1
     ports:
       - "5432:5432"
